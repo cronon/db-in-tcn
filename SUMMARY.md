@@ -8,6 +8,7 @@ This is the summary of my book.
 * [Разработка БД](dev/README.md)
     * [ER-модель](dev/1.md)
     * [Выбор СУБД](dev/2.md)
+    * [Физическая модель](dev/phy.md)
     * [Bvgktvtynfwbz](dev/3s.md)
 * [Заключение](conclusion/README.md)
 * [Приложение](appendix/1.md)
