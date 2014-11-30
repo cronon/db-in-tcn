@@ -1,0 +1,99 @@
+```
+20141130100432_create_users.rb
+class CreateUsers < ActiveRecord::Migration
+  def change
+    create_table :users do |t|
+      t.string :name
+      t.string :email
+      t.string :password
+    end
+  end
+end
+
+20141130101308_create_categories.rb
+class CreateCategories < ActiveRecord::Migration
+  def change
+    create_table :categories do |t|
+      t.string :name
+    end
+  end
+end
+
+20141130101517_create_orders.rb
+class CreateOrders < ActiveRecord::Migration
+  def change
+    create_table :orders do |t|
+      t.time :time
+      t.string :confirmation
+      t.text :comment
+    end
+    add_reference :orders, :user, :index => true
+    add_reference :orders, :table, :index => true
+  end
+end
+
+20141130101908_create_tables.rb
+class CreateTables < ActiveRecord::Migration
+  def change
+    create_table :tables do |t|
+      t.integer :seats
+    end
+    add_reference :tables, :club, :index => true
+  end
+end
+
+20141130102043_create_news.rb
+class CreateNews < ActiveRecord::Migration
+  def change
+    create_table :news do |t|
+      t.string :title
+      t.text :content
+      t.timestamp :created_at
+    end
+    add_reference :news, :club, :index => true
+  end
+end
+
+20141130102222_create_subscribes.rb
+class CreateSubscribes < ActiveRecord::Migration
+  def change
+    create_table :subscribes
+    add_reference :subscribes, :club, :index => true
+    add_reference :subscribes, :user, :index => true
+  end
+end
+
+20141130102614_create_comments.rb
+class CreateComments < ActiveRecord::Migration
+  def change
+    create_table :comments do |t|
+      t.text :content
+      t.timestamp :created_at
+    end
+    add_reference :comments, :user, :index => true
+    add_reference :comments, :club, :index => true
+  end
+end
+
+20141130102742_create_rates.rb
+class CreateRates < ActiveRecord::Migration
+  def change
+    create_table :rates do |t|
+      t.integer :stars
+    end
+    add_reference :rates, :club, :index => true
+    add_reference :rates, :rating_type, :index => true
+    add_reference :rates, :user, :index => true
+  end
+end
+
+20141130102931_create_rating_types.rb
+class CreateRatingTypes < ActiveRecord::Migration
+  def change
+    create_table :rating_types do |t|
+      t.string :name
+    end
+  end
+end
+
+
