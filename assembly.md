@@ -565,11 +565,247 @@ SmartReserve> rake db:migrate
 == 20140510103446 CreateClubs: migrated (0.0044s) =============================
 ```
 Остальные сущности добавим таким же образом (см. Приложение 1)
+Сгененррированный при этом SQL-код содержится в файле db/structure.sql
+
+Добавим тестовые данные в нашу базу. Создание таких данные можно описать средствами ORM в файле db/seeds.rb и загрузить командой rake db:seed. Например
+```
+# метод create создает в базе данных записи в соответствии с переданными параметрами
+City.create([
+  { name: 'Chicago' }, # создадим запись для города с параметром name “Chicago”
+  { name: 'Copenhagen' } # и “Copenhagen”, соответвенно
+])
+```
+
+Содержание файла db/seeds.rb
+```
+#encoding: utf-8 
+
+# создадим несколько пользователей 
+User.create([ 
+  {name: 'Alex', email: 'alex@alivance.com', password: '123456'}, 
+  {name: 'Bob', email: 'bob@alivance.com', password: 'Qwerty12'}, 
+  {name: 'Alice', email: 'alice@alivance.com', password: 'EbMNk44'}, 
+  {name: 'Eve', email: 'eve@alivance.com', password: '![dwMk]}654iEydbPcdd#'}, 
+]) 
+
+# выполним запрос к базе 
+# теперь в переменной alex объект с полями, соответствующими записи в таблице 
+alex = User.where(name: 'Alex').first 
+bob = User.where(name: 'Bob').first 
+alice = User.where(name: 'Alice').first 
+
+# две категории 
+Category.create([ 
+  {name: "Бар"}, 
+  {name: "Кафе"} 
+]) 
+
+cafe = Category.where(name: "Кафе").first 
+
+# два типа рейтинга 
+RatingType.create([ 
+  {name: "Сервис"}, 
+  {name: "Кухня"} 
+]) 
+
+kitchen = RatingType.where(name: "Кухня").first 
+
+# создадим сотню заведений 
+# такие громоздкие операции лучше выполнять в одной транзакции 
+Club.transaction do 
+  100.times do |i| 
+    # в переменной c будет объект, соответствующий только что созданной записи 
+    c = Club.create({ 
+      name: "Club#{i}", 
+      description: "Описание", 
+      address: "ул. Ленина, д. #{i}", 
+      photo: "http://smartreserve.by/assets/img/default-photo.png", 
+      web_site: "http://example.com", 
+      email: "club#{i}@alivance.com", 
+      owner_id: alex.id, # ссылка на владельца 
+      category_id: cafe.id # ссылка на категорию 
+    }) 
+
+    # по двадцать столиков для каждого заведения 
+    20.times do 
+      t = Table.create({ 
+        club_id: c.id, 
+        seats: 5 
+      }) 
+
+      # по заказу на каждый столик 
+      Order.create({ 
+        time: Time.now, 
+        confirmation: "1234", 
+        table_id: t.id, 
+        user_id: bob.id 
+      }) 
+    end 
+
+    # по одной новости 
+    News.create(title: "Мы открылись", content: "Мы открылись", club_id: c.id, created_at: Time.now) 
+
+    # подписке 
+    Subscribe.create(club_id: c.id, user_id: alice.id) 
+
+    # оценке 
+    Rate.create(club_id: c.id, user_id: alice.id, stars: 5) 
+
+    # и комментарию 
+    Comment.create(club_id: c.id, user_id: alice.id, content: "First comment", created_at: Time.now) 
+  end 
+end 
+```
+Загрузим данные в базу
+```
+SmartReserve> rake db:seed
+-- данная команда выводит все SQL-запросы, происходящие во время загрузки данных
+-- приведем только самые основные
+
+-- создание пользователей 
+(0.3ms)  BEGIN 
+  SQL (0.3ms)  INSERT INTO "users" ("email", "name", "password") 
+  VALUES ($1, $2, $3) RETURNING "id"   
+  [["email", "alex@alivance.com"], ["name", "Alex"], 
+   ["password", "123456"]] 
+(58.2ms)  COMMIT 
+(0.2ms)  BEGIN 
+  SQL (0.3ms)  INSERT INTO "users" ("email", "name", "password") 
+  VALUES ($1, $2, $3) RETURNING "id"   
+  [["email", "bob@alivance.com"], ["name", "Bob"], 
+   ["password", "Qwerty12"]] 
+(62.2ms)  COMMIT 
+(0.2ms)  BEGIN 
+  SQL (0.2ms)  INSERT INTO "users" ("email", "name", "password") 
+  VALUES ($1, $2, $3) RETURNING "id"   
+  [["email", "alice@alivance.com"], ["name", "Alice"], 
+   ["password", "EbMNk44"]] 
+(19.7ms)  COMMIT 
+(0.0ms)  BEGIN 
+  SQL (0.6ms)  INSERT INTO "users" ("email", "name", "password") 
+  VALUES ($1, $2, $3) RETURNING "id"   
+  [["email", "eve@alivance.com"], ["name", "Eve"], 
+   ["password", "![dwMk]}654iEydbPcdd#"]] 
+(34.7ms)  COMMIT 
+
+-- выбор пользователей по имени 
+User Load (0.7ms)  SELECT  "users".* FROM "users"   
+  WHERE "users"."name" = 'Alex'   
+  ORDER BY "users"."id" ASC LIMIT 1 
+User Load (0.3ms)  SELECT  "users".* FROM "users"   
+  WHERE "users"."name" = 'Bob'   
+  ORDER BY "users"."id" ASC LIMIT 1 
+User Load (0.2ms)  SELECT  "users".* FROM "users"   
+  WHERE "users"."name" = 'Alice'   
+  ORDER BY "users"."id" ASC LIMIT 1 
+
+-- создание категорий 
+(0.1ms)  BEGIN 
+  SQL (0.3ms)  INSERT INTO "categories" ("name") VALUES ($1) 
+  RETURNING "id"  [["name", "Бар"]] 
+(41.7ms)  COMMIT 
+(0.1ms)  BEGIN 
+  SQL (0.2ms)  INSERT INTO "categories" ("name") VALUES ($1) 
+  RETURNING "id"  [["name", "Кафе"]] 
+(41.0ms)  COMMIT 
+
+-- выбор категории по имени 
+Category Load (1.7ms)  SELECT  "categories".* FROM "categories" 
+  WHERE "categories"."name" = 'Кафе'   
+  ORDER BY "categories"."id" ASC LIMIT 1 
+
+-- создание типов рейтинга 
+(0.4ms)  BEGIN 
+  SQL (0.4ms)  INSERT INTO "rating_types" ("name") VALUES ($1) 
+  RETURNING "id"  [["name", "Сервис"]] 
+(51.7ms)  COMMIT 
+(0.1ms)  BEGIN 
+  SQL (0.9ms)  INSERT INTO "rating_types" ("name") VALUES ($1) 
+  RETURNING "id"  [["name", "Кухня"]] 
+(64.1ms)  COMMIT 
+
+-- выбор типа рейтинга по имени 
+RatingType Load (0.6ms)  SELECT  "rating_types".* FROM "rating_types" 
+  WHERE "rating_types"."name" = 'Кухня' 
+  ORDER BY "rating_types"."id" ASC LIMIT 1 
+
+-- создание заведений в отдельной транзакции 
+(0.2ms)  BEGIN 
+  SQL (0.4ms)  INSERT INTO "clubs" 
+    ("address", "category_id", "description", "email", "name", 
+     "owner_id", "photo", "web_site") 
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING "id" 
+     [["address", "ул. Ленина, д. 0"], ["category_id", 2], 
+      ["description", "Описание"], ["email", "club0@alivance.com"], 
+      ["name", "Club0"], ["owner_id", 1], 
+      ["photo", "http://smartreserve.by/assets/img/default-photo.png"], 
+      ["web_site", "http://example.com"]] 
+
+  -- создание столиков 
+  SQL (0.3ms)  INSERT INTO "tables" ("club_id", "seats") 
+    VALUES ($1, $2) RETURNING "id"   
+    [["club_id", 1], ["seats", 5]] 
+
+  -- создание заказов   
+  SQL (0.3ms)  INSERT INTO "orders" 
+    ("confirmation", "table_id", "time", "user_id") 
+    VALUES ($1, $2, $3, $4) RETURNING "id" 
+    [["confirmation", "1234"], ["table_id", 1], 
+     ["time", "2014-11-24 03:58:31.167403"], ["user_id", 2]] 
+   
+  -- и так далее, для каждого столика и заказа
+
+  -- создание новости 
+  SQL (0.3ms)  INSERT INTO "news" 
+    ("club_id", "content", "created_at", "title") 
+    VALUES ($1, $2, $3, $4) RETURNING "id"   
+    [["club_id", 127], ["content", "Мы открылись"], 
+     ["created_at", "2014-11-24 03:58:31.218141"], 
+     ["title", "Мы открылись"]] 
+
+  -- создание подписки 
+  SQL (0.2ms)  INSERT INTO "subscribes" ("club_id", "user_id") 
+    VALUES ($1, $2) RETURNING "id" 
+    [["club_id", 127], ["user_id", 3]] 
+
+  -- создание оценки 
+  SQL (0.4ms)  INSERT INTO "rates" ("club_id", "stars", "user_id") 
+    VALUES ($1, $2, $3) RETURNING "id"   
+    [["club_id", 127], ["stars", 5], ["user_id", 3]] 
+
+  -- создание комментария 
+  SQL (0.3ms)  INSERT INTO "comments" 
+    ("club_id", "content", "created_at", "user_id") 
+    VALUES ($1, $2, $3, $4) RETURNING "id"   
+    [["club_id", 127], ["content", "First comment"], 
+     ["created_at", "2014-11-24 03:58:31.247139"], 
+     ["user_id", 3]] 
+
+  -- и так далее, для каждого заведения 
+
+-- конец транзакции 
+(1.8ms)  COMMIT 
+```
 
 # Заключение
 В ходе выполнения курсовой работы была создана полнофункциональная база данных, полностью готовая к использованию в приложении SmartReserve.
 Сайт был создан при помощи популярного фреймворка Ruby on Rails. Для него имеется множество плагинов и готовых решений, что позволяет создать приложения любой сложности. Одной из причин выбора данного фреймворка является возможность увеличения функциональности сайта с помощью плагинов и легкость в создании и изменении функционала.
 Поставленные в начале работы цели и задачи были полностью решены при выполнении этой курсовой работы. При выполнении работы были получены знания о реляционных СУБД, практические навыки по разработке баз данных с использованием самых современных технологий.
+
+# СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ 
+
+  1. Sam Ruby, Dave Thomas, David Heinemeier Hansson. Agile Web Development with Rails, 2010. - 472 с. 
+  2. Armando Fox, David Patterson. Engineering Long-Lasting Software: An Agile Approach Using SaaS and Cloud Computing, 2012. - 355 с. 
+  3. Wikipedia [Электронный ресурс]. – Электронные данные. – Режим доступа: http://wikipedia.org/ 
+  4. PostgreSQL [Электронный ресурс]. – Электронные данные. – Режим доступа: http://www.postgresql.org/ 
+  5. Heroku [Электронный ресурс]. – Электронные данные. – Режим доступа: http://www.heroku.com/ 
+  5. Ruby on Rails API [Электронный ресурс]. – Электронные данные. – Режим доступа: http://api.rubyonrails.org/ 
+  5. Ruby on Rails Guides [Электронный ресурс]. – Электронные данные. – Режим доступа: http://guides.rubyonrails.org/ 
+  5. Ruby-Doc.org [Электронный ресурс]. – Электронные данные. – Режим доступа: .org/">http://www.ruby-doc.org/ 
+  5. MySQL [Электронный ресурс]. – Электронные данные. – Режим доступа: http://www.mysql.com/ 
+  5. SQLite [Электронный ресурс]. – Электронные данные. – Режим доступа: http://www.sqlite.org/ 
+  5. GitHub [Электронный ресурс]. – Электронные данные. – Режим доступа: https://github.com/
+
 
 # Приложение 1
 ## SQL код, сгенерированный Rails
